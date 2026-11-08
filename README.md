@@ -106,5 +106,3 @@ src/panel.html    arayüz
 data/             ayarlar, durum, bakiye geçmişi (API anahtarları burada!)
 test/             testler (npm test)
 ```
-
-**Projeyi paylaşırken `data` klasörünü koyma:** API anahtarların `data/settings.json` içinde.
