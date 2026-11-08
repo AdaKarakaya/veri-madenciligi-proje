@@ -1,0 +1,17 @@
+{
+  "name": "load-trading-bot",
+  "version": "1.0.0",
+  "description": "Load Trading Bot: a swing-trading bot for Binance spot, with the Borsa Yardımcısı assistant",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js --open",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.6.0"
+  }
+}

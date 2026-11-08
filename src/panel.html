@@ -1,0 +1,771 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Load Trading Bot</title>
+<style>
+  :root { --bg:#0e1116; --card:#161b22; --line:#262d36; --text:#e6edf3; --muted:#8b949e; --green:#3fb950; --amber:#d29922; --red:#f85149; --blue:#58a6ff; --accent:#1f6feb; --series:#3987e5; }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; } /* else a class's display (the badges') would show a hidden element */
+  .modebar { display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; border-radius:10px; padding:10px 14px; margin-bottom:16px; font-size:13px; }
+  .modebar.paper { background:#2a2208; border:1px solid #6b5313; }
+  .modebar.testnet { background:#0d2a4a; border:1px solid #1f4f86; }
+  .modebar.live { background:#0f2e19; border:1px solid #1f6b35; }
+  .modebar b { font-weight:650; }
+  .modebar a { color:var(--blue); cursor:pointer; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.45 system-ui,-apple-system,Segoe UI,sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:20px 16px 96px; }
+  header { display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; margin-bottom:18px; }
+  .brand { display:flex; align-items:center; gap:10px; }
+  .logo { width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,#1f6feb,#3fb950); display:flex; align-items:center; justify-content:center; }
+  h1 { font-size:20px; margin:0; }
+  h2 { font-size:15px; margin:26px 0 10px; }
+  .tabs { display:flex; gap:4px; }
+  .tabs button { background:none; border-color:transparent; color:var(--muted); font-weight:600; }
+  .tabs button:hover { color:var(--text); border-color:var(--line); }
+  .tabs button.on { background:var(--card); border-color:var(--line); color:var(--text); }
+  .spacer { flex:1; }
+  .tab { display:none; } .tab.on { display:block; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-weight:700; font-size:12px; letter-spacing:.03em; }
+  .badge.paper { background:#3d2e00; color:var(--amber); } .badge.testnet { background:#0d2a4a; color:var(--blue); } .badge.live { background:#0f3d1c; color:var(--green); } .badge.paused { background:#3d0f0f; color:var(--red); }
+  .badge.working { background:#0f3d1c; color:var(--green); }
+  .badge.working::first-letter { animation:pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.35; } }
+  button { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 14px; cursor:pointer; font:inherit; }
+  button:hover { border-color:var(--blue); }
+  button:disabled { opacity:.5; cursor:default; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.danger { border-color:#5c2626; color:var(--red); }
+  button.small { padding:4px 10px; font-size:13px; }
+  .seg { display:inline-flex; gap:4px; }
+  .seg button { padding:5px 12px; font-size:13px; }
+  .seg button.on { border-color:var(--blue); color:var(--blue); background:#0d2a4a; }
+  input { background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 10px; font:inherit; min-width:0; }
+  input:focus, textarea:focus { outline:none; border-color:var(--blue); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; min-width:0; }
+  .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+  .value { font-size:24px; font-weight:650; margin-top:4px; font-variant-numeric:tabular-nums; }
+  .hero { font-size:38px; font-weight:700; letter-spacing:-.01em; font-variant-numeric:tabular-nums; margin-top:2px; }
+  .sub { color:var(--muted); font-size:12px; margin-top:2px; overflow-wrap:anywhere; }
+  .up { color:var(--green); } .down { color:var(--red); }
+  .wrap { overflow-x:auto; background:var(--card); border:1px solid var(--line); border-radius:10px; }
+  table { width:100%; border-collapse:collapse; }
+  th, td { padding:9px 12px; border-top:1px solid var(--line); text-align:left; vertical-align:top; font-variant-numeric:tabular-nums; }
+  th { color:var(--muted); font-weight:500; font-size:12px; border-top:none; white-space:nowrap; }
+  td.coin { font-weight:650; white-space:nowrap; }
+  .empty { color:var(--muted); padding:18px 12px; text-align:center; }
+  .banner { border-radius:10px; padding:12px 14px; margin-bottom:12px; background:#3d0f0f; border:1px solid var(--red); display:none; }
+  .banner.show { display:block; }
+  .note { border-radius:10px; padding:12px 14px; background:#0d2a4a; border:1px solid #1f4f86; font-size:13px; }
+  .row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .rules { display:flex; flex-wrap:wrap; gap:10px 28px; align-items:center; margin-bottom:12px; }
+  .rules .sub { margin:0 0 4px; }
+  /* the total balance chart: one series, so the card title names it */
+  .chart { position:relative; height:180px; margin-top:12px; }
+  .chart svg { display:block; width:100%; height:100%; }
+  .chart .nodata { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:13px; text-align:center; padding:0 16px; }
+  .chart .tip { position:absolute; top:0; pointer-events:none; display:none; background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:5px 9px; font-size:12px; color:var(--muted); white-space:nowrap; transform:translateX(-50%); }
+  .chart .tip b { display:block; color:var(--text); font-size:14px; }
+  /* where the balance is: one bar split by asset, then the list */
+  .alloc { display:flex; height:12px; border-radius:6px; overflow:hidden; background:var(--line); margin:12px 0 6px; gap:2px; }
+  .alloc div { height:100%; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:8px; vertical-align:-1px; }
+  .key { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:5px; vertical-align:-1px; }
+  /* the last month's check under Add a coin, and the best coins over the simulation */
+  .check { margin-top:10px; padding:9px 12px; border-radius:8px; background:#11161d; border:1px solid var(--line); font-size:13px; }
+  .check b { font-weight:650; }
+  .best { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0 0 12px; font-size:13px; }
+  .best button { padding:4px 12px; border-radius:999px; font-size:13px; }
+  .best button.top { border-color:var(--green); background:#0f2e19; }
+  .lvl { white-space:nowrap; }
+  .tag { display:inline-block; padding:1px 8px; border-radius:999px; font-size:12px; background:#0d2a4a; color:var(--blue); }
+  .tag.warn { background:#3d2e00; color:var(--amber); } .tag.bad { background:#3d0f0f; color:var(--red); }
+  .events div { padding:7px 0; border-top:1px solid var(--line); font-size:13px; } .events div:first-child { border-top:none; }
+  .events .t { color:var(--muted); margin-right:8px; font-size:12px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .chips button { padding:3px 10px; font-size:12px; border-radius:999px; }
+  .field { display:flex; flex-direction:column; gap:5px; margin-bottom:12px; }
+  .field label { font-size:13px; color:var(--muted); }
+  .field input { width:100%; }
+  .kv { display:grid; grid-template-columns:max-content 1fr; gap:6px 18px; font-size:13px; }
+  .kv div:nth-child(odd) { color:var(--muted); }
+  .ok { color:var(--green); font-size:13px; } .err { color:var(--red); font-size:13px; }
+
+  /* Borsa Yardımcısı: a round button in the corner of every page; it opens the chat */
+  #helperBtn { position:fixed; right:22px; bottom:22px; width:58px; height:58px; border-radius:50%; border:none; padding:0; background:linear-gradient(135deg,#1f6feb,#3fb950); box-shadow:0 8px 24px rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; z-index:20; }
+  #helperBtn:hover { transform:scale(1.05); }
+  #helper { position:fixed; right:22px; bottom:92px; width:min(400px,calc(100vw - 32px)); height:min(560px,calc(100vh - 120px)); background:var(--card); border:1px solid var(--line); border-radius:14px; box-shadow:0 16px 48px rgba(0,0,0,.55); display:none; flex-direction:column; overflow:hidden; z-index:21; }
+  #helper.open { display:flex; }
+  #helper .head { display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line); background:#11161d; }
+  #helper .head b { flex:1; }
+  #helper .head button { padding:3px 9px; font-size:12px; }
+  #msgs { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; }
+  .msg { max-width:88%; padding:9px 12px; border-radius:12px; font-size:13.5px; line-height:1.5; overflow-wrap:anywhere; }
+  .msg.me { align-self:flex-end; background:var(--accent); color:#fff; border-bottom-right-radius:4px; white-space:pre-wrap; }
+  .msg.bot { align-self:flex-start; background:#1c232c; border:1px solid var(--line); border-bottom-left-radius:4px; }
+  .msg.bot p { margin:0 0 8px; } .msg.bot p:last-child { margin-bottom:0; }
+  .msg.bot ul { margin:4px 0 8px; padding-left:18px; }
+  .msg.bot code { background:var(--bg); padding:1px 4px; border-radius:4px; }
+  .msg.bot a { color:var(--blue); }
+  .msg.err { align-self:flex-start; background:#3d0f0f; border:1px solid #5c2626; color:#ffb4ae; }
+  .msg .src { margin-top:8px; padding-top:7px; border-top:1px solid var(--line); font-size:12px; color:var(--muted); }
+  .msg .src a { display:block; color:var(--blue); text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .typing { align-self:flex-start; color:var(--muted); font-size:13px; }
+  .typing span { animation:blink 1.2s infinite; } .typing span:nth-child(2) { animation-delay:.2s; } .typing span:nth-child(3) { animation-delay:.4s; }
+  @keyframes blink { 0%,80%,100% { opacity:.2; } 40% { opacity:1; } }
+  #helper form { display:flex; gap:8px; padding:10px; border-top:1px solid var(--line); }
+  #helper textarea { flex:1; resize:none; height:42px; max-height:120px; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:10px; font:inherit; font-size:13.5px; }
+  .hello { color:var(--muted); font-size:13px; text-align:center; margin:auto 10px; }
+  .hello b { color:var(--text); display:block; font-size:15px; margin-bottom:4px; }
+  .hello .chips { justify-content:center; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="brand">
+      <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/></svg></div>
+      <h1>Load Trading Bot</h1>
+      <span id="mode" class="badge paper">TEST MODE</span>
+      <span id="runBadge" class="badge working">● WORKING</span>
+    </div>
+    <div class="seg" id="modeSwitch" title="Test mode: a pretend balance at Binance's real prices">
+      <button type="button" data-test="1">Test mode</button>
+      <button type="button" data-test="0">My Binance account</button>
+    </div>
+    <nav class="tabs">
+      <button type="button" data-tab="plan" class="on">Trading plan</button>
+      <button type="button" data-tab="settings">Settings</button>
+    </nav>
+    <div class="spacer"></div>
+    <span class="sub" id="lastTick"></span>
+    <button type="button" id="pauseBtn">Pause</button>
+  </header>
+
+  <div id="modeBar" class="modebar paper"></div>
+  <div id="banner" class="banner"></div>
+
+  <!-- ===== Trading plan ===== -->
+  <section id="tab-plan" class="tab on">
+    <div class="grid">
+      <div class="card" style="grid-column:1/-1">
+        <div class="row">
+          <div style="flex:1;min-width:220px">
+            <div class="label">Total balance</div>
+            <div class="hero" id="total">–</div>
+            <div class="sub" id="totalSub"></div>
+          </div>
+          <div class="seg" id="ranges">
+            <button type="button" data-range="24h">24 h</button>
+            <button type="button" data-range="7d" class="on">7 days</button>
+            <button type="button" data-range="30d">30 days</button>
+            <button type="button" data-range="all">All</button>
+          </div>
+        </div>
+        <div class="chart" id="chart"></div>
+      </div>
+    </div>
+
+    <h2>Where the balance is</h2>
+    <div class="card">
+      <div class="alloc" id="alloc"></div>
+      <table><thead><tr><th>Asset</th><th>Amount</th><th>Price</th><th>Value</th><th>Share</th></tr></thead><tbody id="assets"></tbody></table>
+    </div>
+
+    <h2>Wallet</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="label" id="walletName">Test balance</div>
+        <div class="value" id="walletTotal">–</div>
+        <div class="sub" id="walletSub"></div>
+      </div>
+      <div class="card">
+        <div class="label">USDT ready to trade</div>
+        <div class="value" id="usdtFree">–</div>
+        <div class="sub">Buy-backs are paid from this.</div>
+      </div>
+      <div class="card">
+        <div class="label">Profit from swings</div>
+        <div class="value" id="profit">–</div>
+        <div class="sub" id="profitSub"></div>
+      </div>
+    </div>
+
+    <h2>Trading plan</h2>
+    <div class="card">
+      <div class="rules">
+        <div>
+          <div class="sub">Swing: sell this much above the base, buy back this much under the sale</div>
+          <div class="seg" id="swing"></div>
+        </div>
+        <div>
+          <div class="sub">Stop-loss</div>
+          <div><b id="stopRule">50% within 2 h</b> <span class="sub">sells the whole coin</span></div>
+        </div>
+        <div>
+          <div class="sub">Re-base</div>
+          <div><b id="rebaseRule">after 2 cycles</b> <span class="sub">(Settings)</span></div>
+        </div>
+      </div>
+      <div class="wrap" style="border:none">
+        <table>
+          <thead><tr><th>Coin</th><th>Price of 1 coin</th><th>You hold</th><th>Worth now</th><th>Base value</th><th>Sells when 1 coin is</th><th>Buys back when 1 coin is</th><th>Cycles</th><th>Profit</th><th></th></tr></thead>
+          <tbody id="positions"></tbody>
+        </table>
+      </div>
+      <h2 style="margin-top:18px">Add a coin</h2>
+      <form id="addForm" class="row" autocomplete="off">
+        <input id="addAsset" placeholder="Coin, e.g. SOL" style="width:150px" maxlength="15">
+        <input id="addUsdt" placeholder="USDT to buy it with" style="width:200px" inputmode="decimal">
+        <button type="submit" class="primary" id="addBtn">Start</button>
+        <span class="sub" style="flex-basis:100%">Leave USDT empty to use the coin the account already holds. Its value now becomes the base.</span>
+      </form>
+      <div id="addCheck" class="check" hidden></div>
+      <div class="chips" id="quickCoins"></div>
+      <div id="addMsg" class="sub"></div>
+    </div>
+
+    <h2>Simulate on past prices</h2>
+    <div class="card">
+      <div class="sub" style="margin:0 0 12px">Runs the plan on a coin's real Binance prices of the past days, in a moment, with pretend USDT: what it would have done, against simply buying and holding the coin. Nothing is traded.</div>
+      <div id="simBest" class="best"><span class="sub" style="margin:0">Finding the best coins of the last 3 months for this plan…</span></div>
+      <form id="simForm" class="row" autocomplete="off">
+        <input id="simAsset" value="SOL" style="width:100px" maxlength="15" aria-label="Coin">
+        <input id="simUsdt" value="1000" style="width:110px" inputmode="decimal" aria-label="Starting USDT"><span class="sub" style="margin:0">USDT</span>
+        <span class="tag" title="The simulation always reads the last 90 days of real Binance prices">Last 90 days</span>
+        <div class="seg" id="simSwing"></div>
+        <button type="submit" class="primary" id="simBtn">Run simulation</button>
+      </form>
+      <div id="simOut"></div>
+    </div>
+
+    <h2>Activity</h2>
+    <div class="card events" id="events"></div>
+
+    <h2>Trades</h2>
+    <div class="wrap">
+      <table><thead><tr><th>Time</th><th>Coin</th><th>Side</th><th>Kind</th><th>Amount</th><th>Price</th><th>USDT</th><th>Profit</th></tr></thead><tbody id="trades"></tbody></table>
+    </div>
+  </section>
+
+  <!-- ===== Settings ===== -->
+  <section id="tab-settings" class="tab">
+    <h2 style="margin-top:4px">Binance API</h2>
+    <div class="card">
+      <div class="note" style="margin-bottom:14px">Without a key the bot runs in <b>test mode</b>: 1,000 pretend USDT, Binance's real prices. With a <b>testnet</b> key (testnet.binance.vision) it trades practice money on Binance's test exchange. Untick Testnet only for a real key: then it trades real money. Saving a key switches to it; the <b>Test mode / My Binance account</b> switch at the top goes back and forth. A key needs only spot trading, never withdrawals.</div>
+      <form id="binanceForm" autocomplete="off">
+        <div class="field"><label for="bKey">API key <span id="bKeySaved" class="sub"></span></label><input id="bKey" placeholder="Paste the API key"></div>
+        <div class="field"><label for="bSecret">Secret key <span id="bSecretSaved" class="sub"></span></label><input id="bSecret" type="password" placeholder="Paste the secret key"></div>
+        <div class="field"><label><input type="checkbox" id="bTestnet" style="width:auto;margin-right:6px">Testnet key (practice money)</label></div>
+        <div class="row">
+          <button type="submit" class="primary">Save</button>
+          <button type="button" id="bTest">Test connection</button>
+          <button type="button" id="bClear" class="danger">Remove key</button>
+          <span id="bMsg"></span>
+        </div>
+      </form>
+    </div>
+
+    <h2>Borsa Yardımcısı</h2>
+    <div class="card">
+      <div class="sub" style="margin:0 0 12px">The assistant in the corner answers questions about markets and coins with Claude (Anthropic) and searches the web for fresh news. It needs an Anthropic API key (console.anthropic.com).</div>
+      <form id="aiForm" autocomplete="off">
+        <div class="field"><label for="aKey">Anthropic API key <span id="aKeySaved" class="sub"></span></label><input id="aKey" type="password" placeholder="sk-ant-..."></div>
+        <div class="row"><button type="submit" class="primary">Save</button><button type="button" id="aClear" class="danger">Remove key</button><span id="aMsg"></span></div>
+      </form>
+    </div>
+
+    <h2>Re-base</h2>
+    <div class="card">
+      <div class="sub" style="margin:0 0 12px">After this many profit cycles (a sale and its buy-back), once the holding is worth at least the base plus those cycles' profit, its value becomes the new base, so the next swings trade the bigger balance.</div>
+      <form id="rebaseForm" class="row">
+        <input id="rebaseN" type="number" min="1" max="20" step="1" style="width:90px">
+        <span>cycles</span>
+        <button type="submit" class="primary">Save</button>
+        <span id="rMsg"></span>
+      </form>
+    </div>
+
+    <h2>Rules the bot runs with</h2>
+    <div class="card"><div class="kv" id="rulesList"></div></div>
+
+    <div id="paperBox">
+      <h2>Test balance</h2>
+      <div class="card row">
+        <span class="sub" style="flex:1;margin:0">Back to 1,000 pretend USDT: the test plan and its trades are cleared.</span>
+        <button type="button" id="paperReset" class="danger">Reset test balance</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Borsa Yardımcısı -->
+<button type="button" id="helperBtn" title="Borsa Yardımcısı" aria-label="Open Borsa Yardımcısı">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/></svg>
+</button>
+<div id="helper" role="dialog" aria-label="Borsa Yardımcısı">
+  <div class="head">
+    <div class="logo" style="width:26px;height:26px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/></svg></div>
+    <b>Borsa Yardımcısı</b>
+    <button type="button" id="helperNew" title="Start a new chat">New chat</button>
+    <button type="button" id="helperClose" aria-label="Close">✕</button>
+  </div>
+  <div id="msgs"></div>
+  <form id="helperForm">
+    <textarea id="helperInput" placeholder="Ask about a coin or the market…" rows="1"></textarea>
+    <button type="submit" class="primary" id="helperSend">Send</button>
+  </form>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const usd = (v, d = 2) => v == null || !isFinite(v) ? '–' : (v < 0 ? '−$' : '$') + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+const num = (v, d = 6) => v == null || !isFinite(v) ? '–' : Number(v).toLocaleString('en-US', { maximumFractionDigits: d });
+const price = (v) => v == null || !isFinite(v) ? '–' : '$' + (v >= 100 ? v.toLocaleString('en-US', { maximumFractionDigits: 2 }) : v >= 1 ? v.toLocaleString('en-US', { maximumFractionDigits: 4 }) : Number(v.toPrecision(4)).toString());
+const pct = (v) => v == null || !isFinite(v) ? '' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1) + '%';
+const time = (t) => new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : { method: 'POST', headers: { 'content-type': 'application/json', 'x-panel': '1' }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({ error: 'no answer' }));
+  if (!r.ok) throw new Error(j.error || 'failed');
+  return j;
+}
+
+// ---- tabs ----
+function showTab(name) {
+  document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
+  document.querySelectorAll('.tab').forEach((s) => s.classList.toggle('on', s.id === 'tab-' + name));
+  store.set('tab', name);
+}
+document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+if (store.get('tab') === 'settings') showTab('settings');
+
+// ---- the status ----
+let last = null;
+const COLORS = ['#3987e5', '#199e70', '#d29922', '#a371f7', '#e66767', '#2fb5c4'];
+const MODE_NAMES = { paper: 'Test balance', testnet: 'Binance testnet', live: 'Binance account' };
+const MODE_BADGES = { paper: 'TEST MODE', testnet: 'BINANCE TESTNET', live: 'BINANCE LIVE' };
+const MODE_NOTES = { paper: 'Pretend money, Binance\'s real prices: every move is the market\'s, no money is at risk.', testnet: 'Practice money on Binance\'s test exchange.', live: 'Real money on Binance.' };
+
+function render(s) {
+  last = s;
+  $('mode').className = 'badge ' + s.mode;
+  $('mode').textContent = MODE_BADGES[s.mode];
+  document.querySelectorAll('#modeSwitch button').forEach((b) => {
+    const test = b.dataset.test === '1';
+    b.classList.toggle('on', test === (s.mode === 'paper'));
+    b.title = !test && !s.keys.hasBinance ? 'Add your Binance API key under Settings first' : test ? 'Pretend balance, real prices' : 'Your Binance account' + (s.keys.testnet ? ' (testnet)' : '');
+  });
+  // what the mode means, in one line under the header
+  const bar = $('modeBar');
+  bar.className = 'modebar ' + s.mode;
+  const tw = s.testWallet || {};
+  bar.innerHTML = s.mode === 'paper'
+    ? (tw.seeding
+      ? '<span><b>Setting up the test wallet…</b> picking the ' + tw.coins + ' well-known coins whose cycles earned the most over the last 3 months, from their real Binance prices.</span>'
+      : '<span><b>Test mode:</b> the bot trades a pretend balance (1,000 USDT to start) at Binance\'s real, live prices. Every price move is real; no real money is used.</span>') +
+      '<span class="sub" style="margin:0">Add a coin below to watch it, or <a data-go="sim">simulate on past prices</a> to see it trade at once.' + (s.keys.hasBinance ? '' : ' To trade on your Binance account, <a data-go="keys">add your API key</a>.') + (tw.error ? ' <span class="err">Test wallet: ' + esc(tw.error) + ' (tried again in 5 minutes)</span>' : '') + '</span>'
+    : s.mode === 'testnet'
+      ? '<span><b>Binance testnet:</b> the bot trades practice money on Binance\'s test exchange with your testnet key.</span><span class="sub" style="margin:0">Switch back with <b>Test mode</b> above.</span>'
+      : '<span><b>Binance live:</b> the bot trades <b>real money</b> on your Binance account.</span><span class="sub" style="margin:0">Pause stops all orders; <b>Test mode</b> above goes back to the pretend balance.</span>';
+  $('runBadge').className = 'badge ' + (s.paused ? 'paused' : 'working');
+  $('runBadge').textContent = s.paused ? 'PAUSED' : '● WORKING';
+  $('runBadge').title = s.paused ? 'No orders are sent until Resume' : 'Checking prices every ' + s.rules.tickSec + ' s and trading by the plan';
+  $('pauseBtn').textContent = s.paused ? 'Resume' : 'Pause';
+  $('lastTick').textContent = s.lastTickAt ? 'checked ' + new Date(s.lastTickAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' · every ' + s.rules.tickSec + ' s' : 'starting…';
+  $('banner').className = 'banner' + (s.lastError ? ' show' : '');
+  $('banner').textContent = s.lastError ? 'Last problem: ' + s.lastError : '';
+
+  $('total').textContent = usd(s.total);
+  $('totalSub').textContent = s.assets.length + ' asset' + (s.assets.length === 1 ? '' : 's') + ' in the ' + MODE_NAMES[s.mode].toLowerCase();
+
+  // where the balance is
+  const valued = s.assets.filter((a) => a.usd > 0);
+  const top = valued.slice(0, 5);
+  const rest = valued.slice(5).reduce((a, x) => a + x.usd, 0);
+  const parts = top.map((a, i) => ({ name: a.asset, usd: a.usd, color: COLORS[i] })).concat(rest > 0 ? [{ name: 'Other', usd: rest, color: '#8b949e' }] : []);
+  $('alloc').innerHTML = s.total > 0 ? parts.map((p) => '<div title="' + esc(p.name + ' ' + usd(p.usd)) + '" style="flex:' + p.usd + ';background:' + p.color + '"></div>').join('') : '';
+  const colorOf = (asset) => { const i = top.findIndex((a) => a.asset === asset); return i >= 0 ? COLORS[i] : '#8b949e'; };
+  $('assets').innerHTML = s.assets.length ? s.assets.map((a) => '<tr><td class="coin"><span class="dot" style="background:' + colorOf(a.asset) + '"></span>' + esc(a.asset) + '</td><td>' + num(a.amount) + '</td><td>' + (a.asset === 'USDT' ? '' : price(a.price)) + '</td><td>' + usd(a.usd) + '</td><td>' + (a.pct != null ? a.pct.toFixed(1) + '%' : '–') + '</td></tr>').join('') : '<tr><td colspan="5" class="empty">Nothing in the account yet.</td></tr>';
+
+  // the wallet
+  $('walletName').textContent = MODE_NAMES[s.mode];
+  $('walletTotal').textContent = usd(s.total);
+  $('walletSub').textContent = MODE_NOTES[s.mode];
+  const usdt = s.assets.find((a) => a.asset === 'USDT');
+  $('usdtFree').textContent = usd(usdt ? usdt.amount : 0);
+  $('profit').textContent = usd(s.profitUsd);
+  $('profit').className = 'value' + (s.profitUsd > 0 ? ' up' : '');
+  const cycles = s.positions.reduce((a, p) => a + p.totalCycles, 0);
+  $('profitSub').textContent = cycles + ' finished cycle' + (cycles === 1 ? '' : 's') + ' (sale + buy-back)';
+
+  // the plan
+  $('swing').innerHTML = s.rules.swingChoices.map((v) => '<button type="button" data-swing="' + v + '" class="' + (v === s.rules.swingPct ? 'on' : '') + '">' + v + '%</button>').join('');
+  $('stopRule').textContent = s.rules.stopLossPct + '% within ' + s.rules.stopLossHours + ' h';
+  $('rebaseRule').textContent = 'after ' + s.rules.rebaseCycles + ' cycle' + (s.rules.rebaseCycles === 1 ? '' : 's');
+  $('positions').innerHTML = s.positions.length ? s.positions.map((p) => {
+    if (p.stopped) return '<tr><td class="coin">' + esc(p.asset) + '</td><td colspan="8"><span class="tag bad">Stopped by the stop-loss</span> <span class="sub">' + time(p.stopped.at) + ': sold at ' + price(p.stopped.price) + ' for ' + usd(p.stopped.usdt) + '</span></td><td><button type="button" class="small" data-remove="' + esc(p.asset) + '">Remove</button></td></tr>';
+    const bb = p.buyBacks.length ? p.buyBacks.map((l) => '<div class="lvl">' + price(l.buyAt) + ' <span class="sub">' + pct(l.inPct) + ' · gets ~' + num(l.proceeds / l.buyAt, 4) + ' ' + esc(p.asset) + '</span></div>').join('') : '<span class="sub">nothing sold yet</span>';
+    const reb = p.cycles >= s.rules.rebaseCycles && !p.buyBacks.length ? '<div class="sub">new base when worth ' + usd(p.rebaseAt) + '</div>' : '';
+    const vsBase = p.value != null && p.base > 0 ? (p.value / p.base - 1) * 100 : null;
+    return '<tr><td class="coin">' + esc(p.asset) + '</td>' +
+      '<td>' + price(p.price) + '</td>' +
+      '<td>' + num(p.qty, 6) + ' ' + esc(p.asset) + '</td>' +
+      '<td><b>' + usd(p.value) + '</b><div class="sub">' + (vsBase != null ? pct(vsBase) + ' vs base' : '') + '</div></td>' +
+      '<td>' + usd(p.base) + (p.rebases ? '<div class="sub">raised ' + p.rebases + '×</div>' : '') + '</td>' +
+      '<td class="lvl">' + price(p.sellAt) + '<div class="sub">' + (p.sellInPct != null ? pct(p.sellInPct) + ' from now' : '') + '</div></td>' +
+      '<td>' + bb + '</td>' +
+      '<td>' + p.cycles + ' / ' + s.rules.rebaseCycles + reb + '</td>' +
+      '<td class="' + (p.profitUsd > 0 ? 'up' : '') + '">' + usd(p.profitUsd) + '</td>' +
+      '<td style="white-space:nowrap"><button type="button" class="small" data-remove="' + esc(p.asset) + '" title="Stop trading it; the coins stay">Stop</button> <button type="button" class="small danger" data-sell="' + esc(p.asset) + '">Sell all</button></td></tr>';
+  }).join('') : '<tr><td colspan="10" class="empty">No coin in the plan yet: add one below.</td></tr>';
+
+  $('events').innerHTML = s.events.length ? s.events.map((e) => '<div><span class="t">' + time(e.t) + '</span>' + esc(e.text) + '</div>').join('') : '<div class="sub">Nothing yet.</div>';
+  $('trades').innerHTML = s.trades.length ? s.trades.map((t) => '<tr><td>' + time(t.t) + '</td><td class="coin">' + esc(t.asset) + '</td><td class="' + (t.side === 'buy' ? 'up' : 'down') + '">' + t.side + '</td><td>' + esc(t.kind) + '</td><td>' + num(t.qty) + '</td><td>' + price(t.price) + '</td><td>' + num(t.usdt, 2) + '</td><td>' + (t.profitUsd != null ? usd(t.profitUsd) : '') + '</td></tr>').join('') : '<tr><td colspan="8" class="empty">No trades yet.</td></tr>';
+
+  // settings
+  $('bKeySaved').textContent = s.keys.binanceKey ? '(saved ' + s.keys.binanceKey + ')' : '';
+  $('bSecretSaved').textContent = s.keys.binanceSecret ? '(saved)' : '';
+  if (document.activeElement !== $('bTestnet')) $('bTestnet').checked = s.keys.testnet;
+  $('aKeySaved').textContent = s.keys.anthropicKey ? '(saved ' + s.keys.anthropicKey + ')' : '';
+  if (document.activeElement !== $('rebaseN')) $('rebaseN').value = s.rules.rebaseCycles;
+  $('paperBox').hidden = s.mode !== 'paper';
+  const r = s.rules;
+  $('rulesList').innerHTML = [
+    ['Swing', r.swingPct + '% (chosen on Trading plan)'],
+    ['Sale', 'the part of the holding above the base, when it is worth ' + r.swingPct + '% more than the base'],
+    ['Buy-back', 'the same coin, ' + r.swingPct + '% under the sale\'s price, with all the USDT the sale brought'],
+    ['Re-base', 'after ' + r.rebaseCycles + ' cycles (Settings above)'],
+    ['Stop-loss', 'sells the whole coin after a ' + r.stopLossPct + '% fall within ' + r.stopLossHours + ' h (' + r.stopLossChecks + ' looks in a row)'],
+    ['Orders', 'market orders against ' + r.quote + ', Binance\'s smallest order applies'],
+    ['Checks the price', 'every ' + r.tickSec + ' seconds'],
+    ['Test mode', r.paperStartUsdt.toLocaleString('en-US') + ' pretend USDT to start, Binance\'s real prices, ' + r.paperFeePct + '% fee per trade'],
+  ].map(([k, v]) => '<div>' + esc(k) + '</div><div>' + esc(v) + '</div>').join('');
+}
+
+async function load() {
+  try { render(await api('/api/status')); } catch (e) { $('lastTick').textContent = 'The bot is not reachable'; }
+}
+load();
+setInterval(load, 5000);
+
+// ---- the total balance chart ----
+let range = store.get('range') || '7d';
+document.querySelectorAll('#ranges button').forEach((b) => {
+  b.classList.toggle('on', b.dataset.range === range);
+  b.addEventListener('click', () => { range = b.dataset.range; store.set('range', range); document.querySelectorAll('#ranges button').forEach((x) => x.classList.toggle('on', x === b)); loadChart(); });
+});
+async function loadChart() {
+  let pts = [];
+  try { pts = await api('/api/history?range=' + range); } catch {}
+  drawChart($('chart'), pts);
+}
+function drawChart(box, pts) {
+  if (pts.length < 2) { box.innerHTML = '<div class="nodata">The balance is drawn here as the bot runs (a point every 5 minutes).</div>'; return; }
+  const W = 1000, H = 180, L = 64, R = 10, T = 10, B = 24;
+  const t0 = pts[0].t, t1 = pts.at(-1).t;
+  let lo = Math.min(...pts.map((p) => p.total)), hi = Math.max(...pts.map((p) => p.total));
+  if (hi - lo < hi * 0.002) { lo -= hi * 0.01; hi += hi * 0.01; }
+  const X = (t) => L + ((t - t0) / (t1 - t0 || 1)) * (W - L - R);
+  const Y = (v) => T + (1 - (v - lo) / (hi - lo || 1)) * (H - T - B);
+  const line = pts.map((p, i) => (i ? 'L' : 'M') + X(p.t).toFixed(1) + ' ' + Y(p.total).toFixed(1)).join('');
+  const area = line + 'L' + X(t1).toFixed(1) + ' ' + (H - B) + 'L' + X(t0).toFixed(1) + ' ' + (H - B) + 'Z';
+  const yl = [hi, (hi + lo) / 2, lo].map((v) => '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" stroke="#262d36"/><text x="' + (L - 8) + '" y="' + (Y(v) + 4).toFixed(1) + '" text-anchor="end" fill="#8b949e" font-size="12">' + usd(v, 0) + '</text>').join('');
+  const xl = [t0, t1].map((t, i) => '<text x="' + X(t).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + (i ? 'end' : 'start') + '" fill="#8b949e" font-size="12">' + time(t) + '</text>').join('');
+  box.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Total balance over time">' + yl + xl +
+    '<path d="' + area + '" fill="var(--series)" opacity=".12"/><path d="' + line + '" fill="none" stroke="var(--series)" stroke-width="2" vector-effect="non-scaling-stroke"/>' +
+    '<line id="cx" y1="' + T + '" y2="' + (H - B) + '" stroke="#8b949e" stroke-width="1" vector-effect="non-scaling-stroke" visibility="hidden"/></svg><div class="tip"></div>';
+  const svg = box.querySelector('svg'), tip = box.querySelector('.tip'), cx = box.querySelector('#cx');
+  svg.addEventListener('mousemove', (e) => {
+    const r = svg.getBoundingClientRect();
+    const t = t0 + (((e.clientX - r.left) / r.width) * W - L) / (W - L - R) * (t1 - t0);
+    const p = pts.reduce((a, q) => (Math.abs(q.t - t) < Math.abs(a.t - t) ? q : a));
+    const x = X(p.t);
+    cx.setAttribute('x1', x); cx.setAttribute('x2', x); cx.setAttribute('visibility', 'visible');
+    tip.style.display = 'block';
+    tip.style.left = (x / W) * r.width + 'px';
+    tip.innerHTML = '<b>' + usd(p.total) + '</b>' + time(p.t);
+  });
+  svg.addEventListener('mouseleave', () => { tip.style.display = 'none'; cx.setAttribute('visibility', 'hidden'); });
+}
+loadChart();
+setInterval(loadChart, 60000);
+
+// ---- actions ----
+$('pauseBtn').addEventListener('click', async () => { try { await api('/api/pause', { paused: !last?.paused }); load(); } catch (e) { alert(e.message); } });
+function goToKeys() {
+  showTab('settings');
+  $('bKey').focus();
+  say('bMsg', true, 'Paste your Binance API key and secret here, then Save: the bot switches to your Binance account.');
+}
+$('modeBar').addEventListener('click', (e) => {
+  const a = e.target.closest('[data-go]');
+  if (!a) return;
+  if (a.dataset.go === 'keys') return goToKeys();
+  showTab('plan');
+  $('simForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+$('modeSwitch').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-test]');
+  if (!b || b.classList.contains('on')) return;
+  const test = b.dataset.test === '1';
+  if (!test && !last?.keys.hasBinance) return goToKeys();
+  if (!test && !last?.keys.testnet && !confirm('Switch to your live Binance account? The plan there trades real money.')) return;
+  try { await api('/api/mode', { test }); } catch (err) { alert(err.message); }
+  load(); loadChart();
+});
+
+// ---- simulation on past prices ----
+const simDays = 90; // the simulation always reads the last 90 days
+let simSwing = null;
+function drawSimSwing() {
+  const v = simSwing ?? last?.rules.swingPct ?? 15;
+  $('simSwing').innerHTML = (last?.rules.swingChoices ?? [10, 12, 15, 20, 25]).map((x) => '<button type="button" data-sw="' + x + '" class="' + (x === v ? 'on' : '') + '" title="Swing ' + x + '%">' + x + '%</button>').join('');
+}
+$('simSwing').addEventListener('click', (e) => { const b = e.target.closest('[data-sw]'); if (b) { simSwing = Number(b.dataset.sw); drawSimSwing(); } });
+setTimeout(drawSimSwing, 600);
+$('simForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('simBtn').disabled = true;
+  $('simOut').innerHTML = '<div class="sub" style="margin-top:12px">Reading ' + simDays + ' days of ' + esc($('simAsset').value.toUpperCase()) + ' prices from Binance…</div>';
+  try {
+    const r = await api('/api/simulate', { asset: $('simAsset').value, usdt: Number($('simUsdt').value.replace(',', '.')), days: simDays, swingPct: simSwing ?? last?.rules.swingPct });
+    showSim(r);
+  } catch (err) { $('simOut').innerHTML = '<div class="err" style="margin-top:12px">' + esc(err.message) + '</div>'; }
+  $('simBtn').disabled = false;
+});
+function showSim(r) {
+  const beat = r.end - r.hold;
+  const tradesRows = r.trades.filter((t) => t.kind !== 'rebase').length;
+  $('simOut').innerHTML =
+    '<div class="grid" style="margin-top:14px">' +
+      '<div class="card"><div class="label">With the plan</div><div class="value ' + (r.endPct >= 0 ? 'up' : 'down') + '">' + usd(r.end) + '</div><div class="sub">' + pct(r.endPct) + ' on ' + usd(r.start, 0) + ' · ' + num(r.coinsEnd, 4) + ' ' + esc(r.asset) + ' + ' + usd(r.cashEnd) + ' USDT</div></div>' +
+      '<div class="card"><div class="label">Just holding ' + esc(r.asset) + '</div><div class="value">' + usd(r.hold) + '</div><div class="sub">' + pct(r.holdPct) + ' · the plan did ' + (beat >= 0 ? usd(beat) + ' better' : usd(-beat) + ' worse') + '</div></div>' +
+      '<div class="card"><div class="label">Cycles</div><div class="value">' + r.cycles + '</div><div class="sub">' + usd(r.profitUsd) + ' swing profit · base raised ' + r.rebases + '× · ' + r.waiting + ' sale' + (r.waiting === 1 ? '' : 's') + ' waiting</div></div>' +
+      '<div class="card"><div class="label">' + esc(r.asset) + ' price</div><div class="value">' + price(r.endPrice) + '</div><div class="sub">from ' + price(r.startPrice) + ' (' + pct((r.endPrice / r.startPrice - 1) * 100) + ') in ' + r.days + ' days</div></div>' +
+    '</div>' +
+    (r.stopped ? '<div class="banner show" style="margin-top:12px">The stop-loss sold everything on ' + time(r.stopped.t) + ': ' + price(r.stopped.ref) + ' → ' + price(r.stopped.price) + '.</div>' : '') +
+    '<div class="card" style="margin-top:12px"><div class="row"><b style="flex:1">' + esc(r.pair) + ' · swing ' + r.swingPct + '% · re-base after ' + r.rebaseCycles + '</b><span class="sub" style="margin:0"><span class="key" style="background:var(--red)"></span>sale <span class="key" style="background:var(--green);margin-left:10px"></span>buy</span></div><div class="chart" id="simChart"></div>' +
+    '<div class="sub">' + esc(r.candles) + ', ' + time(r.from) + ' – ' + time(r.to) + ', closing prices, 0.1% fee per trade.</div></div>' +
+    '<div class="wrap" style="margin-top:12px;max-height:280px;overflow:auto"><table><thead><tr><th>Time</th><th>Trade</th><th>Coins</th><th>Price of 1 coin</th><th>USDT</th><th>Profit</th></tr></thead><tbody>' +
+      (tradesRows ? r.trades.map((t) => t.kind === 'rebase'
+        ? '<tr><td>' + time(t.t) + '</td><td colspan="5" class="sub">Base raised from ' + usd(t.from) + ' to ' + usd(t.to) + '</td></tr>'
+        : '<tr><td>' + time(t.t) + '</td><td class="' + (t.side === 'buy' ? 'up' : 'down') + '">' + esc(t.kind === 'start' ? 'start: buy' : t.kind === 'swing' ? 'sale' : t.kind) + '</td><td>' + num(t.qty, 6) + '</td><td>' + price(t.price) + '</td><td>' + num(t.usdt, 2) + '</td><td>' + (t.profitUsd != null ? usd(t.profitUsd) : '') + '</td></tr>').join('') : '') +
+    '</tbody></table></div>';
+  drawSimChart($('simChart'), r);
+}
+function drawSimChart(box, r) {
+  const pts = r.series;
+  const W = 1000, H = 180, L = 64, R = 10, T = 10, B = 24;
+  const t0 = pts[0][0], t1 = pts.at(-1)[0];
+  let lo = Math.min(...pts.map((p) => p[1])), hi = Math.max(...pts.map((p) => p[1]));
+  const pad = (hi - lo) * 0.06 || hi * 0.01;
+  lo -= pad; hi += pad;
+  const X = (t) => L + ((t - t0) / (t1 - t0 || 1)) * (W - L - R);
+  const Y = (v) => T + (1 - (v - lo) / (hi - lo || 1)) * (H - T - B);
+  const line = pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join('');
+  const yl = [hi - pad, (hi + lo) / 2, lo + pad].map((v) => '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" stroke="#262d36"/><text x="' + (L - 8) + '" y="' + (Y(v) + 4).toFixed(1) + '" text-anchor="end" fill="#8b949e" font-size="12">' + price(v) + '</text>').join('');
+  const xl = [t0, t1].map((t, i) => '<text x="' + X(t).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + (i ? 'end' : 'start') + '" fill="#8b949e" font-size="12">' + time(t) + '</text>').join('');
+  box.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Price over the period with the plan\'s sales and buys">' + yl + xl +
+    '<path d="' + line + '" fill="none" stroke="#8b949e" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>';
+  // the trades as HTML dots placed in percent, so they stay round however the chart is stretched
+  const dots = r.trades.filter((t) => t.kind === 'swing' || t.kind === 'buy-back' || t.kind === 'stop-loss').map((t) => '<span title="' + esc((t.side === 'buy' ? 'buy at ' : 'sale at ') + price(t.price) + ' · ' + time(t.t)) + '" style="position:absolute;left:' + (X(t.t) / W * 100).toFixed(2) + '%;top:' + (Y(t.price) / H * 100).toFixed(2) + '%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:' + (t.side === 'buy' ? 'var(--green)' : 'var(--red)') + ';border:2px solid var(--card)"></span>').join('');
+  box.insertAdjacentHTML('beforeend', dots);
+}
+$('swing').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-swing]');
+  if (!b) return;
+  try { await api('/api/plan/swing', { swingPct: Number(b.dataset.swing) }); load(); loadBest(); checkCoin(); } catch (err) { alert(err.message); }
+});
+$('positions').addEventListener('click', async (e) => {
+  const rm = e.target.closest('[data-remove]'), sell = e.target.closest('[data-sell]');
+  if (!rm && !sell) return;
+  const asset = (rm || sell).dataset.remove || (rm || sell).dataset.sell;
+  if (sell && !confirm('Sell all ' + asset + ' for USDT now, at the market price, and take it out of the plan?')) return;
+  if (rm && !sell && !confirm('Take ' + asset + ' out of the plan? Its coins stay in the account.')) return;
+  (rm || sell).disabled = true;
+  try { await api('/api/plan/remove', { asset, sell: Boolean(sell) }); } catch (err) { alert(err.message); }
+  load();
+});
+['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE'].forEach((c) => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.textContent = c;
+  b.addEventListener('click', () => { $('addAsset').value = c; checkCoin(); $('addUsdt').focus(); });
+  $('quickCoins').appendChild(b);
+});
+
+// The coin written under Add a coin: how the plan would have done with it over the last month, on its real prices
+let checkTimer = null, checkSeq = 0;
+function checkCoin() {
+  clearTimeout(checkTimer);
+  const asset = $('addAsset').value.trim().toUpperCase().replace(/USDT$/, '');
+  if (asset.length < 2) { $('addCheck').hidden = true; return; }
+  checkTimer = setTimeout(async () => {
+    const seq = ++checkSeq;
+    $('addCheck').hidden = false;
+    $('addCheck').innerHTML = '<span class="sub" style="margin:0">Checking how profitable ' + esc(asset) + ' was over the last 1 month with this plan…</span>';
+    try {
+      const r = await api('/api/simulate', { asset, days: 30, usdt: 1000, swingPct: last?.rules.swingPct });
+      if (seq !== checkSeq) return; // a newer coin was written meanwhile
+      const beat = r.end - r.hold;
+      const line = (x) => '<b class="' + (x.profitUsd > 0 ? 'up' : '') + '">' + x.cycles + ' cycle' + (x.cycles === 1 ? '' : 's') + ' earned ' + usd(x.profitUsd) + '</b> · in all ' + pct(x.endPct) + ' (1,000 USDT → ' + usd(x.end) + ') · just holding it: ' + pct(x.holdPct);
+      $('addCheck').innerHTML = '<div>Last 1 month with this plan (swing ' + r.swingPct + '%), on ' + esc(r.asset) + '\'s real prices: ' + line(r) + ' · the plan did ' + (beat >= 0 ? '<span class="up">' + usd(beat) + ' better</span>' : '<span class="down">' + usd(-beat) + ' worse</span>') + ' than holding.' +
+        (r.stopped ? ' <span class="err">The stop-loss would have sold it.</span>' : '') + '</div><div class="sub" id="check90">Last 3 months: checking…</div>';
+      const q = await api('/api/simulate', { asset, days: 90, usdt: 1000, swingPct: last?.rules.swingPct }).catch(() => null);
+      if (seq !== checkSeq || !$('check90')) return;
+      $('check90').innerHTML = q ? 'Last 3 months: ' + line(q) + '.' : '';
+    } catch (err) {
+      if (seq !== checkSeq) return;
+      $('addCheck').innerHTML = '<span class="err">' + esc(err.message) + '</span>';
+    }
+  }, 600);
+}
+$('addAsset').addEventListener('input', checkCoin);
+
+// The best coins of the last 3 months for this plan, over the simulation: click one to run it
+let bestSwingPct = null;
+async function loadBest() {
+  try {
+    const r = await api('/api/ranking');
+    bestSwingPct = r.swingPct;
+    $('simBest').innerHTML = '<span>Best in the last 3 months, in profit and completing cycles, at swing <b>' + r.swingPct + '%</b>:</span>' +
+      r.top.map((c, i) => '<button type="button" class="' + (i === 0 ? 'top' : '') + '" data-best="' + esc(c.asset) + '" title="Run the simulation on ' + esc(c.asset) + ' at ' + r.swingPct + '%"><b>' + esc(c.asset) + '</b> ' + pct(c.endPct) + ' · ' + c.cycles + ' cycle' + (c.cycles === 1 ? '' : 's') + '</button>').join('') +
+      '<span class="sub" style="margin:0;flex-basis:100%">Swings compared on ' + r.list.length + ' well-known coins (the best 3 together): ' + r.bySwing.map((x) => (x.swingPct === r.swingPct ? '<b>' : '') + x.swingPct + '% → ' + pct(x.totalPct) + ' (' + esc(x.coins.join(', ')) + ')' + (x.swingPct === r.swingPct ? '</b>' : '')).join(' · ') + '. Click a coin to try it.</span>';
+  } catch (e) {
+    $('simBest').innerHTML = '<span class="sub" style="margin:0">Last month\'s best could not be worked out (' + esc(e.message) + ').</span>';
+  }
+}
+$('simBest').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-best]');
+  if (!b) return;
+  $('simAsset').value = b.dataset.best;
+  simSwing = bestSwingPct; drawSimSwing();
+  $('simForm').requestSubmit();
+});
+setTimeout(loadBest, 300);
+setInterval(loadBest, 30 * 60_000);
+$('addForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const asset = $('addAsset').value.trim(), usdt = $('addUsdt').value.trim().replace(',', '.');
+  if (!asset) return;
+  if (usdt && last?.mode === 'live' && !confirm('Buy ' + usdt + ' USDT of ' + asset.toUpperCase() + ' with real money now?')) return;
+  $('addBtn').disabled = true;
+  $('addMsg').className = 'sub'; $('addMsg').textContent = 'Starting…';
+  try {
+    const p = await api('/api/plan/add', { asset, usdt: usdt ? Number(usdt) : 0 });
+    $('addMsg').className = 'ok'; $('addMsg').textContent = p.asset + ' is in the plan with a base of ' + usd(p.base) + '.';
+    $('addAsset').value = ''; $('addUsdt').value = ''; $('addCheck').hidden = true;
+  } catch (err) { $('addMsg').className = 'err'; $('addMsg').textContent = err.message; }
+  $('addBtn').disabled = false;
+  load();
+});
+
+// ---- settings ----
+const say = (el, ok, text) => { $(el).className = ok ? 'ok' : 'err'; $(el).textContent = text; };
+$('binanceForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const v = await api('/api/settings', { binanceKey: $('bKey').value, binanceSecret: $('bSecret').value, testnet: $('bTestnet').checked });
+    $('bKey').value = ''; $('bSecret').value = '';
+    say('bMsg', true, 'Saved: the bot now runs on ' + MODE_NAMES[v.mode].toLowerCase() + '.');
+  } catch (err) { say('bMsg', false, err.message); }
+  load(); loadChart();
+});
+$('bTest').addEventListener('click', async () => {
+  $('bMsg').className = 'sub'; $('bMsg').textContent = 'Asking Binance…';
+  try { const r = await api('/api/settings/test', {}); say('bMsg', true, 'Connected: the account holds ' + r.assets + ' asset' + (r.assets === 1 ? '' : 's') + '.'); } catch (err) { say('bMsg', false, err.message); }
+});
+$('bClear').addEventListener('click', async () => {
+  if (!confirm('Remove the Binance key? The bot goes back to test mode.')) return;
+  try { await api('/api/settings', { clearBinance: true }); say('bMsg', true, 'Removed: test mode.'); } catch (err) { say('bMsg', false, err.message); }
+  load(); loadChart();
+});
+$('aiForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try { await api('/api/settings', { anthropicKey: $('aKey').value }); $('aKey').value = ''; say('aMsg', true, 'Saved.'); } catch (err) { say('aMsg', false, err.message); }
+  load();
+});
+$('aClear').addEventListener('click', async () => {
+  try { await api('/api/settings', { clearAnthropic: true }); say('aMsg', true, 'Removed.'); } catch (err) { say('aMsg', false, err.message); }
+  load();
+});
+$('rebaseForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try { await api('/api/settings', { rebaseCycles: Number($('rebaseN').value) }); say('rMsg', true, 'Saved.'); } catch (err) { say('rMsg', false, err.message); }
+  load();
+});
+$('paperReset').addEventListener('click', async () => {
+  if (!confirm('Reset the test balance to 1,000 USDT and clear its plan and trades?')) return;
+  try { await api('/api/paper/reset', {}); } catch (err) { alert(err.message); }
+  load(); loadChart();
+});
+
+// ---- Borsa Yardımcısı ----
+let chatId = store.get('chatId') || newChatId();
+function newChatId() { const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8); store.set('chatId', id); return id; }
+const SAMPLES = ['Bitcoin bugün neden düştü?', 'Solana hakkında son haberler neler?', 'Botumun durumu nasıl?'];
+function hello() {
+  $('msgs').innerHTML = '<div class="hello"><b>Hi, I\'m Borsa Yardımcısı</b>Ask about coins, the market or your bot. I search the web for fresh news.<div class="chips">' + SAMPLES.map((q) => '<button type="button" data-q="' + esc(q) + '">' + esc(q) + '</button>').join('') + '</div></div>';
+}
+hello();
+$('msgs').addEventListener('click', (e) => { const b = e.target.closest('[data-q]'); if (b) { $('helperInput').value = b.dataset.q; ask(); } });
+$('helperBtn').addEventListener('click', () => { $('helper').classList.toggle('open'); if ($('helper').classList.contains('open')) $('helperInput').focus(); });
+$('helperClose').addEventListener('click', () => $('helper').classList.remove('open'));
+$('helperNew').addEventListener('click', async () => { api('/api/assistant/reset', { chatId }).catch(() => {}); chatId = newChatId(); hello(); });
+
+// the answer's text, safely: escaped first, then **bold**, `code`, [links](https://…) and "- " lists
+function markdown(text) {
+  const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  const out = [];
+  let list = null;
+  for (const raw of text.split('\n')) {
+    const line = raw.trimEnd();
+    const item = line.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)$/);
+    if (item) { (list ??= []).push('<li>' + inline(item[1]) + '</li>'); continue; }
+    if (list) { out.push('<ul>' + list.join('') + '</ul>'); list = null; }
+    const h = line.match(/^#{1,4}\s+(.*)$/);
+    if (h) out.push('<p><b>' + inline(h[1]) + '</b></p>');
+    else if (line.trim()) out.push('<p>' + inline(line) + '</p>');
+  }
+  if (list) out.push('<ul>' + list.join('') + '</ul>');
+  return out.join('');
+}
+function bubble(kind, html) {
+  if ($('msgs').querySelector('.hello')) $('msgs').innerHTML = '';
+  const d = document.createElement('div');
+  d.className = 'msg ' + kind;
+  d.innerHTML = html;
+  $('msgs').appendChild(d);
+  $('msgs').scrollTop = $('msgs').scrollHeight;
+  return d;
+}
+async function ask() {
+  const text = $('helperInput').value.trim();
+  if (!text || $('helperSend').disabled) return;
+  $('helperInput').value = '';
+  bubble('me', esc(text));
+  const wait = bubble('typing', 'Borsa Yardımcısı is looking it up <span>●</span><span>●</span><span>●</span>');
+  wait.className = 'typing';
+  $('helperSend').disabled = true;
+  try {
+    const r = await api('/api/assistant', { chatId, text });
+    wait.remove();
+    const src = r.sources && r.sources.length ? '<div class="src">Sources' + r.sources.map((s) => '<a href="' + esc(s.url) + '" target="_blank" rel="noopener" title="' + esc(s.url) + '">' + esc(s.title) + '</a>').join('') + '</div>' : '';
+    bubble('bot', markdown(r.text || '…') + src);
+  } catch (e) {
+    wait.remove();
+    bubble('err', esc(e.message));
+  }
+  $('helperSend').disabled = false;
+  $('helperInput').focus();
+}
+$('helperForm').addEventListener('submit', (e) => { e.preventDefault(); ask(); });
+$('helperInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); } });
+</script>
+</body>
+</html>
